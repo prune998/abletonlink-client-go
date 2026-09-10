@@ -11,18 +11,14 @@ func TestSocketLayerIsolation(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
-	iface := "lo0"
+	iface := loopbackName(t)
 
 	netA, err := openNetwork(iface, "")
-	if err != nil {
-		t.Fatalf("openNetwork a: %v", err)
-	}
+	skipIfUnavailable(t, err)
 	defer netA.close()
 
 	netB, err := openNetwork(iface, "")
-	if err != nil {
-		t.Fatalf("openNetwork b: %v", err)
-	}
+	skipIfUnavailable(t, err)
 	defer netB.close()
 
 	chB := make(chan udpPacket, 64)

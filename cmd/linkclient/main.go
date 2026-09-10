@@ -30,6 +30,9 @@ import (
 	"github.com/prune998/abletonlink-client-go/link"
 )
 
+// version is overridden at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
 	tempo := flag.Float64("tempo", 120, "initial tempo in BPM")
 	quantum := flag.Float64("quantum", 4, "quantum (beats per bar) used for the phase display")
@@ -37,7 +40,13 @@ func main() {
 	ucIface := flag.String("unicast-interface", "", "interface or local IP for unicast sockets (default: discovery interface)")
 	startStop := flag.Bool("startstop-sync", false, "enable transport start/stop sync")
 	verbose := flag.Bool("v", false, "verbose protocol logging to stderr")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("linkclient " + version)
+		return
+	}
 
 	logger := link.PrintfLogger{Printf: func(f string, a ...any) {
 		// The TUI owns the terminal via the alternate screen; diagnostics

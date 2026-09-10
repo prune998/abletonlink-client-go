@@ -7,9 +7,10 @@ import (
 )
 
 func TestResolveUnicastBind(t *testing.T) {
-	lo, err := net.InterfaceByName("lo0")
+	iface := loopbackName(t)
+	lo, err := net.InterfaceByName(iface)
 	if err != nil {
-		t.Skip("no lo0 interface")
+		t.Skipf("no %s interface", iface)
 	}
 	loIP := firstIPv4(t, lo)
 
@@ -24,7 +25,7 @@ func TestResolveUnicastBind(t *testing.T) {
 	})
 
 	t.Run("interface name", func(t *testing.T) {
-		got, err := resolveUnicastBind("lo0", loIP)
+		got, err := resolveUnicastBind(iface, loIP)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,12 +89,11 @@ func TestOpenNetworkUnicastSelection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping in short mode")
 	}
+	iface := loopbackName(t)
 
 	t.Run("explicit IP", func(t *testing.T) {
-		n, err := openNetwork("lo0", "127.0.0.1")
-		if err != nil {
-			t.Fatal(err)
-		}
+		n, err := openNetwork(iface, "127.0.0.1")
+		skipIfUnavailable(t, err)
 		defer n.close()
 
 		ucAddr, _ := n.ucConn.LocalAddr().(*net.UDPAddr)
@@ -112,10 +112,8 @@ func TestOpenNetworkUnicastSelection(t *testing.T) {
 	})
 
 	t.Run("wildcard advertises discovery address", func(t *testing.T) {
-		n, err := openNetwork("lo0", "0.0.0.0")
-		if err != nil {
-			t.Fatal(err)
-		}
+		n, err := openNetwork(iface, "0.0.0.0")
+		skipIfUnavailable(t, err)
 		defer n.close()
 
 		ucAddr, _ := n.ucConn.LocalAddr().(*net.UDPAddr)
@@ -141,7 +139,7 @@ func TestOpenNetworkUnicastSelection(t *testing.T) {
 	})
 
 	t.Run("bogus selection fails cleanly", func(t *testing.T) {
-		if _, err := openNetwork("lo0", "no-such-if42"); err == nil {
+		if _, err := openNetwork(iface, "no-such-if42"); err == nil {
 			t.Fatal("expected error for bogus unicast interface")
 		}
 	})
@@ -154,22 +152,19 @@ func TestUnicastSeparationStillDiscovers(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
+	iface := loopbackName(t)
 
-	a, err := New(Config{Tempo: 120, Enabled: true, Interface: "lo0"})
-	if err != nil {
-		t.Fatalf("node a: %v", err)
-	}
+	a, err := New(Config{Tempo: 120, Enabled: true, Interface: iface})
+	skipIfUnavailable(t, err)
 	defer a.Close()
 
 	b, err := New(Config{
 		Tempo:            100,
 		Enabled:          true,
-		Interface:        "lo0",
+		Interface:        iface,
 		UnicastInterface: "127.0.0.1",
 	})
-	if err != nil {
-		t.Fatalf("node b: %v", err)
-	}
+	skipIfUnavailable(t, err)
 	defer b.Close()
 
 	deadline := time.Now().Add(20 * time.Second)

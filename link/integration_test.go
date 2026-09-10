@@ -2,7 +2,6 @@ package link
 
 import (
 	"math"
-	"os"
 	"testing"
 	"time"
 )
@@ -18,10 +17,7 @@ func TestTwoNodesSync(t *testing.T) {
 	// Loopback is used by default so the test works in environments where
 	// LAN multicast egress is blocked (VPNs, firewalls). Set
 	// ABLINK_TEST_INTERFACE to test on another interface.
-	iface := os.Getenv("ABLINK_TEST_INTERFACE")
-	if iface == "" {
-		iface = "lo0"
-	}
+	iface := loopbackName(t)
 
 	stderr := func(tag string) Logger {
 		return PrintfLogger{Printf: func(f string, a ...any) {
@@ -30,15 +26,11 @@ func TestTwoNodesSync(t *testing.T) {
 	}
 
 	a, err := New(Config{Tempo: 120, Enabled: true, Interface: iface, Logger: stderr("a")})
-	if err != nil {
-		t.Fatalf("node a: %v", err)
-	}
+	skipIfUnavailable(t, err)
 	defer a.Close()
 
 	b, err := New(Config{Tempo: 98, Enabled: true, Interface: iface, Logger: stderr("b")})
-	if err != nil {
-		t.Fatalf("node b: %v", err)
-	}
+	skipIfUnavailable(t, err)
 	defer b.Close()
 
 	// Wait for both nodes to discover each other and converge to the same

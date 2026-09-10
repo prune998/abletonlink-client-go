@@ -159,6 +159,29 @@ wire (identical to the reference implementation).
 - Two or more instances of this library on the same host (integration test).
 - Traktor Pro (Link-enabled) on the same network.
 
+## Building
+
+Requires [Go](https://go.dev) (see `go.mod` for the minimum version) and `make`.
+
+```sh
+make build       # build ./linkclient for the current platform
+make build-all   # cross-compile dist/ for linux, windows and darwin (amd64+arm64)
+make test        # run the test suite
+make check       # gofmt + go vet + tests
+make release     # check + build all release artifacts
+make run         # run the client locally
+make help        # list all targets
+```
+
+Binaries embed the version (from `git describe`, or pass `VERSION=v1.2.3 make build-all`); `./linkclient -version` prints it.
+
+## Releases
+
+Pushing a tag starting with `v` (e.g. `v1.0.0`) triggers the release
+workflow: tests run on Linux, macOS and Windows, then the client is
+cross-compiled for `linux`, `windows` and `darwin` (amd64 + arm64) and
+published as a GitHub release with SHA-256 checksums.
+
 ## Requirements
 
 - Go 1.24+

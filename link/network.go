@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"syscall"
 
 	"golang.org/x/net/ipv4"
 )
@@ -209,25 +208,13 @@ func openNetwork(interfaceName, unicastName string) (*network, error) {
 // listenMulticast creates a UDP socket bound to the wildcard address on the
 // multicast group's port, joined to the group on the given interface.
 //
-// SO_REUSEADDR and SO_REUSEPORT are both set: REUSEPORT guarantees the bind
-// succeeds alongside any other Link application's sockets (Ableton Live,
-// Traktor, ...), and multicast datagrams are delivered to every socket that
-// joined the group on the interface.
+// SO_REUSEADDR and SO_REUSEPORT are both set (on unix platforms): REUSEPORT
+// guarantees the bind succeeds alongside any other Link application's
+// sockets (Ableton Live, Traktor, ...), and multicast datagrams are
+// delivered to every socket that joined the group on the interface.
 func listenMulticast(ifi *net.Interface, group *net.UDPAddr) (*net.UDPConn, error) {
 	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var sockErr error
-			if err := c.Control(func(fd uintptr) {
-				sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
-				if sockErr != nil {
-					return
-				}
-				sockErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEPORT, 1)
-			}); err != nil {
-				return err
-			}
-			return sockErr
-		},
+		Control: multicastListenControl(),
 	}
 	pc, err := lc.ListenPacket(context.Background(), "udp4", fmt.Sprintf(":%d", group.Port))
 	if err != nil {
