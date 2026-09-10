@@ -23,6 +23,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Enable multicast on loopback (linux)
+        if: runner.os == 'Linux'
+        run: sudo ip link set lo multicast on
+
       - name: go vet
         run: go vet ./...
 

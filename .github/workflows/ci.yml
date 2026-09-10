@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: ['**']
   pull_request:
-
+    branches: ['main']
 permissions:
   contents: read
 
@@ -22,6 +20,10 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+
+      - name: Enable multicast on loopback (linux)
+        if: runner.os == 'Linux'
+        run: sudo ip link set lo multicast on
 
       - name: gofmt
         if: runner.os != 'Windows'

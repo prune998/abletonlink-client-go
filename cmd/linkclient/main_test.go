@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -10,12 +12,45 @@ import (
 	"github.com/prune998/abletonlink-client-go/link"
 )
 
+// testLoopback returns the loopback interface name for the current platform,
+// overridable via ABLINK_TEST_INTERFACE. Windows runners have no usable
+// loopback multicast, so tests using a live Link node skip there.
+func testLoopback(t *testing.T) string {
+	t.Helper()
+	if env := os.Getenv("ABLINK_TEST_INTERFACE"); env != "" {
+		return env
+	}
+	switch runtime.GOOS {
+	case "windows":
+		t.Skip("loopback multicast not available on windows")
+	case "linux":
+		return "lo"
+	default:
+		return "lo0"
+	}
+	return ""
+}
+
+// skipIfNetworkUnavailable lets tests skip gracefully in environments (CI
+// runners, containers) where loopback multicast is not usable, while genuine
+// failures still fail loudly.
+func skipIfNetworkUnavailable(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	if strings.Contains(err.Error(), "interface") ||
+		strings.Contains(err.Error(), "multicast") ||
+		strings.Contains(err.Error(), "socket") {
+		t.Skipf("network setup unavailable in this environment: %v", err)
+	}
+	t.Fatalf("network setup failed: %v", err)
+}
+
 func newTestModel(t *testing.T) model {
 	t.Helper()
-	lnk, err := link.New(link.Config{Tempo: 120, Enabled: true, Interface: "lo0"})
-	if err != nil {
-		t.Fatalf("link.New: %v", err)
-	}
+	lnk, err := link.New(link.Config{Tempo: 120, Enabled: true, Interface: testLoopback(t)})
+	skipIfNetworkUnavailable(t, err)
 	t.Cleanup(func() { lnk.Close() })
 	return *newModel(lnk, 4)
 }
@@ -45,10 +80,8 @@ func TestQuitKey(t *testing.T) {
 }
 
 func TestTempoEntryViaKeys(t *testing.T) {
-	lnk, err := link.New(link.Config{Tempo: 120, Enabled: true, Interface: "lo0"})
-	if err != nil {
-		t.Fatalf("link.New: %v", err)
-	}
+	lnk, err := link.New(link.Config{Tempo: 120, Enabled: true, Interface: testLoopback(t)})
+	skipIfNetworkUnavailable(t, err)
 	t.Cleanup(func() { lnk.Close() })
 
 	// Other Link applications may be running on the network and may outvote
