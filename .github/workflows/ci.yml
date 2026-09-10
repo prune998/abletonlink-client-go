@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ['main']
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Enable multicast on loopback (linux)
+        if: runner.os == 'Linux'
+        run: sudo ip link set lo multicast on
+
+      - name: gofmt
+        if: runner.os != 'Windows'
+        run: test -z "$(gofmt -l . )" || { gofmt -l .; exit 1; }
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./... -count=1
